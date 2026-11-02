@@ -35,7 +35,7 @@ Click the puzzle-piece icon next to the address bar, then the **pin** next to **
 
 ## Use
 
-1. Click the **F** icon, then **Edit my information**. Fill in your details, add your resume, and click **Save**.
+1. Click the **F** icon, then **Edit my information**. Fill in your details, add your resume, and click **Save**. You don't need to fill in everything: skip whatever you like and click **Save**.
 2. Open a job application and click **F**, then **Fill this page**.
 3. Fill in any fields it missed. When the box **"Do you want to update your saved info?"** appears, click **Save** so those fields fill automatically next time.
 4. Check the form before submitting.
