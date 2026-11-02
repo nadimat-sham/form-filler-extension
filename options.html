@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Form Filler – My Information</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>My Information</h1>
+    <p>Everything here is stored only on this computer, in the extension's local storage.</p>
+  </header>
+
+  <form id="profile-form" autocomplete="off">
+
+    <!-- 1. Personal -->
+    <section class="card">
+      <h2>Personal</h2>
+      <div class="grid">
+        <label>First name <input type="text" name="firstName"></label>
+        <label>Last name <input type="text" name="lastName"></label>
+        <label>Preferred name <input type="text" name="preferredName"></label>
+        <label>Pronouns <input type="text" name="pronouns" placeholder="e.g. she/her, he/him, they/them"></label>
+        <label>Email <input type="email" name="email"></label>
+        <label>Phone <input type="tel" name="phone"></label>
+        <label class="full">Street address <input type="text" name="street"></label>
+        <label>City <input type="text" name="city"></label>
+        <label>State <input type="text" name="state"></label>
+        <label>ZIP code <input type="text" name="zip"></label>
+        <label>Country <input type="text" name="country"></label>
+      </div>
+    </section>
+
+    <!-- 2. Links -->
+    <section class="card">
+      <h2>Links</h2>
+      <div class="grid">
+        <label>LinkedIn <input type="url" name="linkedin" placeholder="https://www.linkedin.com/in/…"></label>
+        <label>GitHub <input type="url" name="github" placeholder="https://github.com/…"></label>
+        <label class="full">Portfolio / website <input type="url" name="website" placeholder="https://…"></label>
+      </div>
+    </section>
+
+    <!-- 3. Work -->
+    <section class="card">
+      <h2>Work</h2>
+      <div class="grid">
+        <label>Current company <input type="text" name="currentCompany"></label>
+        <label>Current job title <input type="text" name="currentTitle"></label>
+        <label>Years of experience <input type="number" name="yearsExperience" min="0" step="0.5"></label>
+        <label>Expected salary <input type="text" name="expectedSalary" placeholder="e.g. $120,000"></label>
+        <label>Earliest start date <input type="date" name="startDate"></label>
+        <label>Notice period <input type="text" name="noticePeriod" placeholder="e.g. 2 weeks"></label>
+        <label class="full">How did you hear about us? (default answer)
+          <input type="text" name="howHeard" placeholder="e.g. LinkedIn">
+        </label>
+      </div>
+    </section>
+
+    <!-- 4. Education -->
+    <section class="card">
+      <h2>Education</h2>
+      <div class="grid">
+        <label class="full">School <input type="text" name="school"></label>
+        <label>Degree <input type="text" name="degree" placeholder="e.g. Bachelor of Science"></label>
+        <label>Major <input type="text" name="major"></label>
+        <label>Graduation year <input type="number" name="graduationYear" min="1950" max="2100"></label>
+        <label>GPA <input type="text" name="gpa" placeholder="e.g. 3.7"></label>
+      </div>
+    </section>
+
+    <!-- Bangladesh job forms (Teletalk and similar) -->
+    <h2 class="group-heading">Bangladesh job forms</h2>
+    <p class="group-hint">Used by government job forms (Teletalk etc.). For dropdown answers, type the text the way the form shows it, e.g. "Dhaka", "S.S.C", "GPA(out of 5)".</p>
+
+    <section class="card">
+      <h2>Basic information</h2>
+      <div class="grid">
+        <label>Name in Bangla <input type="text" name="nameBangla" lang="bn"></label>
+        <label>Date of birth <input type="date" name="dateOfBirth"></label>
+        <label>Father's name <input type="text" name="fatherName"></label>
+        <label>Father's name in Bangla <input type="text" name="fatherNameBangla" lang="bn"></label>
+        <label>Mother's name <input type="text" name="motherName"></label>
+        <label>Mother's name in Bangla <input type="text" name="motherNameBangla" lang="bn"></label>
+        <label>Nationality <input type="text" name="nationality" placeholder="Bangladeshi"></label>
+        <label>Religion
+          <select name="religion">
+            <option value="">— Select —</option>
+            <option>Islam</option>
+            <option>Hinduism</option>
+            <option>Buddhism</option>
+            <option>Christianity</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Marital status
+          <select name="maritalStatus">
+            <option value="">— Select —</option>
+            <option>Single</option>
+            <option>Married</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label>Spouse name <input type="text" name="spouseName"></label>
+        <label>National ID (NID) number <input type="text" name="nidNumber" inputmode="numeric"></label>
+        <label>Birth registration number <input type="text" name="birthRegNumber" inputmode="numeric"></label>
+        <label>Passport number <input type="text" name="passportNumber"></label>
+        <label>Quota
+          <select name="quota">
+            <option value="">— Select —</option>
+            <option>Not Applicable</option>
+            <option>Child of Freedom Fighter</option>
+            <option>Child of Martyred Freedom Fighter</option>
+            <option>Physically Challenged</option>
+            <option>Ethnic Minority</option>
+            <option>Third Gender</option>
+          </select>
+        </label>
+        <label>Departmental status
+          <select name="departmentalStatus">
+            <option value="">— Select —</option>
+            <option>Not Applicable</option>
+            <option>Govt. Employee</option>
+            <option>Semi Govt. Employee</option>
+            <option>Autonomous</option>
+            <option>Departmental Candidate</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint hint-below">If you leave NID, birth registration or passport empty, the form's "Do you have …?" question is answered "No".</p>
+    </section>
+
+    <section class="card">
+      <h2>Present address</h2>
+      <div class="grid">
+        <label>Care of <input type="text" name="presentCareOf"></label>
+        <label>Village / Road / House / Flat <input type="text" name="presentVillage"></label>
+        <label>District <input type="text" name="presentDistrict" placeholder="e.g. Dhaka"></label>
+        <label>Upazila / P.S. <input type="text" name="presentUpazila"></label>
+        <label>Post office <input type="text" name="presentPostOffice"></label>
+        <label>Post code <input type="text" name="presentPostCode" inputmode="numeric"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Permanent address</h2>
+      <label class="checkbox-label"><input type="checkbox" name="permanentSame" id="permanent-same"> Same as present address</label>
+      <div class="grid" id="permanent-fields">
+        <label>Care of <input type="text" name="permanentCareOf"></label>
+        <label>Village / Road / House / Flat <input type="text" name="permanentVillage"></label>
+        <label>District <input type="text" name="permanentDistrict"></label>
+        <label>Upazila / P.S. <input type="text" name="permanentUpazila"></label>
+        <label>Post office <input type="text" name="permanentPostOffice"></label>
+        <label>Post code <input type="text" name="permanentPostCode" inputmode="numeric"></label>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Academic results</h2>
+
+      <h3>SSC / Equivalent</h3>
+      <div class="grid">
+        <label>Examination <input type="text" name="sscExam" list="school-exams" placeholder="S.S.C"></label>
+        <label>Board <input type="text" name="sscBoard" list="boards" placeholder="Dhaka"></label>
+        <label>Roll no. <input type="text" name="sscRoll" inputmode="numeric"></label>
+        <label>Group / Subject <input type="text" name="sscGroup" list="groups" placeholder="Science"></label>
+        <label>Result type <input type="text" name="sscResultType" list="school-results" placeholder="GPA(out of 5)"></label>
+        <label>GPA <input type="text" name="sscResult" placeholder="5.00"></label>
+        <label>Passing year <input type="number" name="sscYear" min="1950" max="2100"></label>
+      </div>
+
+      <h3>HSC / Equivalent</h3>
+      <div class="grid">
+        <label>Examination <input type="text" name="hscExam" list="college-exams" placeholder="H.S.C"></label>
+        <label>Board <input type="text" name="hscBoard" list="boards" placeholder="Dhaka"></label>
+        <label>Roll no. <input type="text" name="hscRoll" inputmode="numeric"></label>
+        <label>Group / Subject <input type="text" name="hscGroup" list="groups" placeholder="Science"></label>
+        <label>Result type <input type="text" name="hscResultType" list="school-results" placeholder="GPA(out of 5)"></label>
+        <label>GPA <input type="text" name="hscResult" placeholder="5.00"></label>
+        <label>Passing year <input type="number" name="hscYear" min="1950" max="2100"></label>
+      </div>
+
+      <h3>Graduation / Equivalent</h3>
+      <div class="grid">
+        <label>Examination <input type="text" name="graExam" list="degree-exams" placeholder="B.Sc Engineering"></label>
+        <label>University / Institute <input type="text" name="graInstitute" placeholder="Full name, as in the form's list"></label>
+        <label>Subject / Degree <input type="text" name="graSubject" placeholder="Computer Science & Engineering"></label>
+        <label>Result type <input type="text" name="graResultType" list="degree-results" placeholder="CGPA(out of 4)"></label>
+        <label>CGPA <input type="text" name="graResult" placeholder="3.42"></label>
+        <label>Passing year <input type="number" name="graYear" min="1950" max="2100"></label>
+        <label>Course duration <input type="text" name="graDuration" list="durations" placeholder="04 Years"></label>
+      </div>
+
+      <h3>Masters / Equivalent (optional)</h3>
+      <div class="grid">
+        <label>Examination <input type="text" name="masExam" list="degree-exams" placeholder="M.Sc"></label>
+        <label>University / Institute <input type="text" name="masInstitute"></label>
+        <label>Subject / Degree <input type="text" name="masSubject"></label>
+        <label>Result type <input type="text" name="masResultType" list="degree-results" placeholder="CGPA(out of 4)"></label>
+        <label>CGPA <input type="text" name="masResult"></label>
+        <label>Passing year <input type="number" name="masYear" min="1950" max="2100"></label>
+        <label>Course duration <input type="text" name="masDuration" list="durations" placeholder="01 Year"></label>
+      </div>
+
+      <datalist id="school-exams"><option>S.S.C</option><option>Dakhil</option><option>S.S.C Vocational</option><option>O Level/Cambridge</option><option>S.S.C Equivalent</option></datalist>
+      <datalist id="college-exams"><option>H.S.C</option><option>Alim</option><option>Business Management</option><option>Diploma</option><option>A Level/Sr. Cambridge</option><option>H.S.C Equivalent</option></datalist>
+      <datalist id="boards"><option>Dhaka</option><option>Barishal</option><option>Chattogram</option><option>Cumilla</option><option>Dinajpur</option><option>Jashore</option><option>Mymensingh</option><option>Rajshahi</option><option>Sylhet</option><option>Madrasah</option><option>Technical</option></datalist>
+      <datalist id="groups"><option>Science</option><option>Humanities</option><option>Business Studies</option></datalist>
+      <datalist id="school-results"><option>GPA(out of 5)</option><option>GPA(out of 4)</option><option>1st Division</option><option>2nd Division</option><option>3rd Division</option></datalist>
+      <datalist id="degree-exams"><option>B.Sc Engineering</option><option>B.Sc in Agricultural Science</option><option>M.B.B.S./B.D.S</option><option>Honors</option><option>Pass Course</option><option>B.B.A</option><option>M.Sc Engineering</option><option>M.Sc</option><option>M.A</option><option>M.B.A</option></datalist>
+      <datalist id="degree-results"><option>CGPA(out of 4)</option><option>CGPA(out of 5)</option><option>1st Class</option><option>2nd Class</option><option>3rd Class</option><option>Passed</option></datalist>
+      <datalist id="durations"><option>01 Year</option><option>02 Years</option><option>03 Years</option><option>04 Years</option><option>05 Years</option></datalist>
+    </section>
+
+    <h2 class="group-heading">More</h2>
+
+    <!-- 5. Work eligibility -->
+    <section class="card">
+      <h2>Work eligibility</h2>
+      <div class="grid">
+        <label>Are you legally authorized to work in the US?
+          <select name="workAuthorized">
+            <option value="">— Select —</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </label>
+        <label>Will you now or in the future require visa sponsorship?
+          <select name="needSponsorship">
+            <option value="">— Select —</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </label>
+        <label>Are you willing to relocate?
+          <select name="willingToRelocate">
+            <option value="">— Select —</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </label>
+        <label>Are you 18 years of age or older?
+          <select name="over18">
+            <option value="">— Select —</option>
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- 6. Diversity -->
+    <section class="card">
+      <h2>Voluntary self-identification</h2>
+      <div class="grid">
+        <label>Gender
+          <select name="gender">
+            <option value="">— Select —</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Non-binary</option>
+            <option>Decline to self-identify</option>
+          </select>
+        </label>
+        <label>Are you Hispanic/Latino?
+          <select name="hispanicLatino">
+            <option value="">— Select —</option>
+            <option>Yes</option>
+            <option>No</option>
+            <option>Decline to self-identify</option>
+          </select>
+        </label>
+        <label>Race
+          <select name="race">
+            <option value="">— Select —</option>
+            <option>American Indian or Alaska Native</option>
+            <option>Asian</option>
+            <option>Black or African American</option>
+            <option>Native Hawaiian or Other Pacific Islander</option>
+            <option>White</option>
+            <option>Two or More Races</option>
+            <option>Decline to self-identify</option>
+          </select>
+        </label>
+        <label>Veteran status
+          <select name="veteran">
+            <option value="">— Select —</option>
+            <option>I identify as one or more of the classifications of protected veteran</option>
+            <option>I am not a protected veteran</option>
+            <option>Decline to self-identify</option>
+          </select>
+        </label>
+        <label class="full">Disability status
+          <select name="disability">
+            <option value="">— Select —</option>
+            <option>Yes, I have a disability (or previously had a disability)</option>
+            <option>No, I do not have a disability and have not had one in the past</option>
+            <option>Decline to self-identify</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <!-- 7. Cover letter -->
+    <section class="card">
+      <h2>Cover letter</h2>
+      <label>Default cover letter
+        <textarea name="coverLetter" rows="14" placeholder="Dear Hiring Manager, …"></textarea>
+      </label>
+    </section>
+
+    <!-- 8. Files -->
+    <section class="card">
+      <h2>Files</h2>
+      <div class="grid">
+        <div class="file-field" data-file-key="resume">
+          <span class="field-label">Resume</span>
+          <input type="file" accept=".pdf,.doc,.docx,.txt,.rtf">
+          <div class="file-status">
+            <span class="file-name">No file saved</span>
+            <button type="button" class="btn btn-small btn-danger file-remove" hidden>Remove</button>
+          </div>
+        </div>
+        <div class="file-field" data-file-key="coverLetterFile">
+          <span class="field-label">Cover letter file (optional)</span>
+          <input type="file" accept=".pdf,.doc,.docx,.txt,.rtf">
+          <div class="file-status">
+            <span class="file-name">No file saved</span>
+            <button type="button" class="btn btn-small btn-danger file-remove" hidden>Remove</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Saved answers -->
+    <section class="card">
+      <h2>Saved answers</h2>
+      <p class="hint">Answers to questions that come up often, like "Why do you want to work here?"</p>
+      <div id="answers-list"></div>
+      <button type="button" id="add-answer" class="btn btn-secondary">+ Add answer</button>
+    </section>
+
+    <div class="save-bar">
+      <span id="save-status" role="status" aria-live="polite"></span>
+      <button type="submit" id="save-btn" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+
+  <template id="answer-row-template">
+    <div class="answer-row">
+      <label>Question <input type="text" class="answer-question"></label>
+      <label>Answer <textarea class="answer-text" rows="4"></textarea></label>
+      <div class="answer-actions">
+        <button type="button" class="btn btn-small btn-danger answer-remove">Remove</button>
+      </div>
+    </div>
+  </template>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,243 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 96px;
+  background: #f3f4f6;
+  color: #1f2937;
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.page-header,
+#profile-form {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.page-header h1 {
+  margin: 0 0 4px;
+  font-size: 26px;
+}
+
+.page-header p {
+  margin: 0 0 20px;
+  color: #6b7280;
+}
+
+/* Cards */
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+.hint {
+  margin: -6px 0 14px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.hint-below {
+  margin: 12px 0 0;
+}
+
+.card h3 {
+  margin: 20px 0 10px;
+  font-size: 15px;
+  color: #374151;
+}
+
+.card h3:first-of-type {
+  margin-top: 0;
+}
+
+.group-heading {
+  margin: 32px 0 4px;
+  font-size: 20px;
+}
+
+.group-hint {
+  margin: 0 0 14px;
+  color: #6b7280;
+}
+
+.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+#permanent-fields.disabled {
+  opacity: 0.5;
+}
+
+/* Inputs: two columns on wide screens, one on narrow */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+}
+
+.grid .full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+label,
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+
+textarea {
+  resize: vertical;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Files */
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.file-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.file-name {
+  overflow-wrap: anywhere;
+}
+
+/* Saved answers */
+.answer-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.answer-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Buttons */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+  min-width: 110px;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: #fff;
+  border-color: #d1d5db;
+  color: #374151;
+}
+
+.btn-secondary:hover {
+  background: #f3f4f6;
+}
+
+.btn-danger {
+  background: #fff;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.btn-danger:hover {
+  background: #fef2f2;
+}
+
+/* Save bar stays visible at the bottom of the window */
+.save-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  background: linear-gradient(to bottom, rgba(243, 244, 246, 0), #f3f4f6 35%);
+}
+
+#save-status {
+  font-weight: 600;
+  color: #15803d;
+}
+
+#save-status.error {
+  color: #b91c1c;
+}

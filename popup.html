@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Form Filler</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <h1>Form Filler</h1>
+
+  <div id="ready" hidden>
+    <button type="button" id="fill-btn" class="fill-btn">Fill this page</button>
+    <p id="status" role="status" aria-live="polite"></p>
+    <p id="tip" class="tip" hidden>Fill in the rest yourself. Form Filler will offer to save your new answers for next time.</p>
+    <div id="missing" hidden>
+      <p class="missing-title">Required fields still empty:</p>
+      <ul id="missing-list"></ul>
+    </div>
+  </div>
+
+  <p id="empty" class="empty" hidden>No information saved yet.</p>
+
+  <a href="#" id="options-link" class="options-link">Edit my information</a>
+
+  <script src="popup.js"></script>
+</body>
+</html>
