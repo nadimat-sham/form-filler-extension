@@ -76,3 +76,9 @@ It also works in Edge (`edge://extensions`) and Brave (`brave://extensions`). It
 
 **Errors or Warnings button on the extension card**
 Click it and include a screenshot when you report the problem in [Issues](../../issues).
+
+---
+
+## Contact
+
+For any questions, email **azizul.haque.nadim.47@gmail.com**.
