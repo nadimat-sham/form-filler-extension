@@ -33,6 +33,7 @@ async function fillPage() {
   setStatus("Filling…");
   showMissing([]);
   document.getElementById("tip").hidden = true;
+  document.getElementById("welcome").hidden = true;
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -55,10 +56,11 @@ async function fillPage() {
     }
 
     if (errors.length && !filled) setStatus(`Error: ${errors[0]}`, true);
+    else if (filled === 0 && !hasData) setStatus("Nothing saved yet. Fill the form yourself and click Save in the box that appears.");
     else if (filled === 0) setStatus("Didn't find any fields I could fill on this page.", true);
     else setStatus(`Filled ${filled} field${filled === 1 ? "" : "s"} ✓`);
-    showMissing([...new Set(missing)]);
-    document.getElementById("tip").hidden = errors.length > 0 && !filled;
+    showMissing(hasData ? [...new Set(missing)] : []);
+    document.getElementById("tip").hidden = !filled;
   } catch (err) {
     const message = String((err && err.message) || err);
     if (/cannot access|cannot be scripted|chrome:\/\/|extensions gallery/i.test(message)) {
@@ -71,11 +73,12 @@ async function fillPage() {
   }
 }
 
+let hasData = false;
+
 async function init() {
-  const { profile } = await chrome.storage.local.get("profile");
-  const hasData = !!profile && Object.values(profile).some((v) => v);
-  document.getElementById("ready").hidden = !hasData;
-  document.getElementById("empty").hidden = hasData;
+  const { profile, savedAnswers } = await chrome.storage.local.get(["profile", "savedAnswers"]);
+  hasData = (!!profile && Object.values(profile).some((v) => v)) || (savedAnswers || []).length > 0;
+  document.getElementById("welcome").hidden = hasData;
 }
 
 fillBtn.addEventListener("click", fillPage);

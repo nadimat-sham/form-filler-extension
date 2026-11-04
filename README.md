@@ -4,6 +4,8 @@ A free Chrome extension that fills job application forms with your saved informa
 
 Your information is stored only on your own computer. Nothing is sent anywhere.
 
+📄 **Prefer a printable version?** See the one-page [Setup Guide (PDF)](SETUP-GUIDE.pdf).
+
 ---
 
 ## Install
@@ -23,9 +25,9 @@ Unzip the downloaded file and move the folder somewhere you'll keep it, such as 
 1. Open `chrome://extensions` in Chrome.
 2. Turn on **Developer mode** (top-right).
 3. Click **Load unpacked**.
-4. Open folders until you see **`manifest.json`** directly inside, then select that folder.
+4. Select the **form-filler-extension-main** folder.
 
-> Unzipping often creates a folder inside a folder. Choose the inner one, the folder that directly contains `manifest.json`.
+> If that folder has another folder with the same name inside it, select the inner one.
 
 ### 4. Pin it
 
@@ -35,10 +37,12 @@ Click the puzzle-piece icon next to the address bar, then the **pin** next to **
 
 ## Use
 
-1. Click the **F** icon, then **Edit my information**. Fill in your details, add your resume, and click **Save**. You don't need to fill in everything: skip whatever you like and click **Save**.
-2. Open a job application and click **F**, then **Fill this page**.
-3. Fill in any fields it missed. When the box **"Do you want to update your saved info?"** appears, click **Save** so those fields fill automatically next time.
+1. Open a job application and click the **F** icon, then **Fill this page**. The first time, nothing is filled yet.
+2. Fill in the form yourself. A box appears at the bottom-right: **"Do you want to update your saved info?"** It updates as you type. Untick anything you don't want kept and click **Save**.
+3. Next time, **Fill this page** fills those answers for you. Fill in anything new, and the box offers to save that too.
 4. Check the form before submitting.
+
+You can also enter or change your information any time: click **F**, then **Edit my information**. You can also add your resume there.
 
 ---
 
@@ -51,10 +55,10 @@ Download the new ZIP, replace the files in your Form Filler folder, then click *
 ## Troubleshooting
 
 **"Manifest file is missing or unreadable"**
-You selected the wrong folder. Click **Load unpacked** again and open folders until you see `manifest.json` directly inside, then select that folder.
+You selected the wrong folder. Click **Load unpacked** again and select the **form-filler-extension-main** folder. If it has another folder with the same name inside, select that inner one.
 
-**Popup says "No information saved yet"**
-Each computer starts empty. Click **Edit my information**, fill in your details and click **Save**.
+**Popup says "Nothing saved yet"**
+Each computer starts empty. Fill the form yourself and click **Save** in the box that appears, or click **Edit my information** to enter your details.
 
 **"Didn't find any fields I could fill"**
 Reload the job page (F5) and try again. Pages opened before installing or updating the extension can't be filled until you reload them. Some forms only show their fields after you click "Apply".

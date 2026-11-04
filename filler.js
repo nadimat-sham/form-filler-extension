@@ -108,7 +108,7 @@
     { key: "preferredName", kind: "text", test: /preferred (first )?name|nick ?name|go by/ },
     { key: "firstName", kind: "text", test: /\bfirst name\b|\bgiven name\b|\bforename\b|\bfname\b/ },
     { key: "lastName", kind: "text", test: /\blast name\b|\bfamily name\b|\bsurname\b|\blname\b/ },
-    { key: "fullName", kind: "text", test: /full name|legal name|your name|^name$|candidate name|applicant name/, value: (p) => [p.firstName, p.lastName].filter(Boolean).join(" "), store: null },
+    { key: "fullName", kind: "text", test: /full name|legal name|your name|^name$|candidate name|applicant name/, value: (p) => [p.firstName, p.lastName].filter(Boolean).join(" "), store: "fullName" },
     { key: "country", kind: "text", test: /\bcountry\b/, not: /code/ },
     { key: "phone", kind: "text", test: /phone|mobile|\bcell\b|telephone|contact number/ },
     { key: "zip", kind: "text", test: /\bzip\b|postal|post ?code/ },
@@ -514,7 +514,7 @@
 
   // Kept on window so re-running the filler on the same page reuses one set of listeners.
   const state = window.__formFillerState || (window.__formFillerState = {
-    tracked: new Map(), running: false, timer: null, host: null,
+    tracked: new Map(), rows: new Map(), changes: [], ctx: null, running: false, saving: false, timer: null, host: null,
   });
 
   const NEVER_SAVE = /captcha|verification code|password|\botp\b|security code/;
@@ -525,6 +525,27 @@
     const question = label.replace(/\*/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
     if (NEVER_SAVE.test(norm(question)) || (!store && !question)) return;
     state.tracked.set(key, { target, kind, question, store, original: "", dismissed: "" });
+  }
+
+  // Fields we didn't see while filling (e.g. ones that appear after an earlier choice)
+  // are tracked the first time the user types in them.
+  function trackLate(el) {
+    if (!state.ctx || !(el instanceof Element)) return;
+    if (el.tagName === "SELECT") {
+      if (!state.tracked.has(el)) track(el, "select", labelText(el), resolve(el, labelText(el), state.ctx).store);
+    } else if (el.type === "radio") {
+      const inputs = el.name
+        ? [...document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`)]
+        : [el];
+      if (![...state.tracked.keys()].some((key) => inputs.includes(key))) {
+        const question = groupQuestion(inputs);
+        track(inputs, "group", question, resolve(inputs[0], question, state.ctx).store);
+      }
+    } else if (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && TEXT_TYPES.has((el.getAttribute("type") || "text").toLowerCase()))) {
+      if (el.getAttribute("role") === "combobox" || state.tracked.has(el)) return;
+      const label = labelText(el);
+      track(el, "text", label, resolve(el, label, state.ctx, { isTextarea: el.tagName === "TEXTAREA" }).store);
+    }
   }
 
   function currentValue(entry) {
@@ -540,20 +561,25 @@
   function pendingChanges() {
     const changes = [];
     for (const entry of state.tracked.values()) {
+      if (!entry.target.isConnected && !(Array.isArray(entry.target) && entry.target[0].isConnected)) continue;
       const value = currentValue(entry);
       if (value && value !== entry.original && value !== entry.dismissed) changes.push({ entry, value });
     }
     return changes;
   }
 
-  function scheduleCheck() {
+  function onFieldEvent(event) {
+    if (state.running) return;
+    trackLate(event.target);
     clearTimeout(state.timer);
-    state.timer = setTimeout(() => {
-      if (state.running) return;
-      const changes = pendingChanges();
-      if (changes.length) showSaveBox(changes);
-      else hideSaveBox();
-    }, 700);
+    state.timer = setTimeout(refreshSaveBox, 600);
+  }
+
+  function refreshSaveBox() {
+    if (state.running || state.saving) return;
+    const changes = pendingChanges();
+    if (changes.length) renderSaveBox(changes);
+    else hideSaveBox();
   }
 
   async function saveChanges(changes) {
@@ -561,17 +587,25 @@
     const profile = data.profile || {};
     const savedAnswers = data.savedAnswers || [];
     for (const { entry, value } of changes) {
-      if (entry.store) {
+      if (entry.store === "fullName") {
+        // "Md. Azizul Haque Nadim" → first name "Md. Azizul Haque", last name "Nadim".
+        const words = value.split(/\s+/);
+        profile.lastName = words.length > 1 ? words.pop() : "";
+        profile.firstName = words.join(" ");
+      } else if (entry.store) {
         profile[entry.store] = value;
       } else {
+        const similar = bestSavedAnswer(entry.question, savedAnswers);
         const match = savedAnswers.find((item) => norm(item.question) === norm(entry.question))
-          || bestSavedAnswer(entry.question, savedAnswers).score >= 0.8 && bestSavedAnswer(entry.question, savedAnswers).item;
+          || (similar.score >= 0.8 && similar.item);
         if (match) match.answer = value;
         else savedAnswers.push({ question: entry.question, answer: value });
       }
       entry.original = value;
     }
     await chrome.storage.local.set({ profile, savedAnswers });
+    // Use the new answers the next time "Fill this page" runs on this page.
+    if (state.ctx) Object.assign(state.ctx, { profile, saved: savedAnswers });
   }
 
   const SAVE_BOX_STYLE = `
@@ -592,69 +626,94 @@
     .later { background: #fff; color: #374151; border: 1px solid #d1d5db; }
     .done { padding: 14px; font-weight: 700; color: #15803d; }`;
 
-  function showSaveBox(changes) {
-    if (!state.host || !state.host.isConnected) {
-      state.host = document.createElement("div");
-      state.host.style.cssText = "all: initial; position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;";
-      state.host.attachShadow({ mode: "open" });
-      document.documentElement.appendChild(state.host);
-    }
-    const root = state.host.shadowRoot;
+  function createSaveBox() {
+    state.host = document.createElement("div");
+    state.host.style.cssText = "all: initial; position: fixed; right: 16px; bottom: 16px; z-index: 2147483647;";
+    const root = state.host.attachShadow({ mode: "open" });
     root.innerHTML = `<style>${SAVE_BOX_STYLE}</style>
       <div class="box">
         <div class="head"><span>Do you want to update your saved info?</span><button class="close" title="Close">×</button></div>
-        <div class="sub">Save these answers so Form Filler can fill them next time.</div>
+        <div class="sub">Save these answers so Form Filler can fill them for you next time.</div>
         <div class="list"></div>
         <div class="actions"><button class="btn later">Not now</button><button class="btn save">Save</button></div>
       </div>`;
+    document.documentElement.appendChild(state.host);
 
-    const list = root.querySelector(".list");
-    const boxes = changes.map(({ entry, value }) => {
-      const row = document.createElement("label");
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.checked = true;
-      const text = document.createElement("span");
-      const q = document.createElement("div");
-      q.className = "q";
-      q.textContent = shortLabel(entry.question) || "Field";
-      const v = document.createElement("div");
-      v.className = "v";
-      v.textContent = value.length > 80 ? `${value.slice(0, 80)}…` : value;
-      text.append(q, v);
-      row.append(checkbox, text);
-      list.appendChild(row);
-      return checkbox;
-    });
-
+    // "Not now" hides these answers until they change again.
     const dismiss = () => {
-      for (const { entry, value } of changes) entry.dismissed = value;
+      for (const { entry, value } of state.changes) entry.dismissed = value;
       hideSaveBox();
     };
     root.querySelector(".close").addEventListener("click", dismiss);
     root.querySelector(".later").addEventListener("click", dismiss);
     root.querySelector(".save").addEventListener("click", async () => {
-      const chosen = changes.filter((_, i) => boxes[i].checked);
-      for (const change of changes) if (!chosen.includes(change)) change.entry.dismissed = change.value;
+      const chosen = state.changes.filter(({ entry }) => state.rows.get(entry).checkbox.checked);
+      for (const change of state.changes) if (!chosen.includes(change)) change.entry.dismissed = change.value;
+      state.saving = true;
+      const box = root.querySelector(".box");
       try {
         await saveChanges(chosen);
-        root.querySelector(".box").innerHTML = `<div class="done">Saved ✓</div>`;
+        box.innerHTML = `<div class="done">Saved ✓</div>`;
       } catch (err) {
-        root.querySelector(".box").innerHTML = `<div class="done" style="color:#b91c1c">Could not save: ${String(err.message || err).replace(/</g, "&lt;")}</div>`;
+        box.innerHTML = `<div class="done" style="color:#b91c1c"></div>`;
+        box.firstChild.textContent = `Could not save: ${(err && err.message) || err}`;
       }
-      setTimeout(hideSaveBox, 1800);
+      setTimeout(() => {
+        state.saving = false;
+        hideSaveBox();
+        refreshSaveBox();
+      }, 1500);
     });
+  }
+
+  // Updates the box in place, so rows the user unticked stay unticked while they keep typing.
+  function renderSaveBox(changes) {
+    if (!state.host || !state.host.isConnected) {
+      state.rows.clear();
+      createSaveBox();
+    }
+    const list = state.host.shadowRoot.querySelector(".list");
+    const current = new Set(changes.map(({ entry }) => entry));
+    for (const [entry, row] of state.rows) {
+      if (!current.has(entry)) {
+        row.element.remove();
+        state.rows.delete(entry);
+      }
+    }
+    for (const { entry, value } of changes) {
+      let row = state.rows.get(entry);
+      if (!row) {
+        const element = document.createElement("label");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true;
+        const text = document.createElement("span");
+        const q = document.createElement("div");
+        q.className = "q";
+        q.textContent = shortLabel(entry.question) || "Field";
+        const v = document.createElement("div");
+        v.className = "v";
+        text.append(q, v);
+        element.append(checkbox, text);
+        list.appendChild(element);
+        row = { element, checkbox, valueEl: v };
+        state.rows.set(entry, row);
+      }
+      row.valueEl.textContent = value.length > 80 ? `${value.slice(0, 80)}…` : value;
+    }
+    state.changes = changes;
   }
 
   function hideSaveBox() {
     if (state.host) state.host.remove();
     state.host = null;
+    state.rows.clear();
   }
 
   if (!state.listening) {
     state.listening = true;
-    document.addEventListener("input", scheduleCheck, true);
-    document.addEventListener("change", scheduleCheck, true);
+    document.addEventListener("input", onFieldEvent, true);
+    document.addEventListener("change", onFieldEvent, true);
   }
 
   // ---------- Main ----------
@@ -662,6 +721,7 @@
   async function run() {
     const data = await chrome.storage.local.get(["profile", "savedAnswers", "resume", "coverLetterFile"]);
     const ctx = { profile: data.profile || {}, saved: data.savedAnswers || [] };
+    state.ctx = ctx;
     state.running = true;
     state.tracked.clear();
     hideSaveBox();
