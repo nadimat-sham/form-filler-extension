@@ -501,23 +501,37 @@
   // a small box offers to save the new answers: to the profile when we know which profile key
   // the field is, otherwise as a saved answer to the field's question.
 
+  // Unsaved answers are also kept in chrome.storage.local ("unsavedAnswers"), so they still
+  // show up in the box after the page is closed, the next time the filler runs on any page.
+
   // Kept on window so re-running the filler on the same page reuses one set of listeners.
   const state = window.__formFillerState || (window.__formFillerState = {
-    tracked: new Map(), rows: new Map(), changes: [], ctx: null, running: false, saving: false, timer: null, host: null,
-    // After "Not now" / "×": the answers on show then, so the box stays closed until something new is typed.
+    // Fields on this page: element (first radio of a group) → { target, kind, question, store, original, ready }
+    tracked: new Map(),
+    // Unsaved answers from earlier visits: key → { stored: true, question, store, value, site }
+    stored: new Map(),
+    rows: new Map(), changes: [], ctx: null, running: false, saving: false, timer: null, host: null,
+    // After "Not now" / "×": key → value on show then; the box stays closed until something new is typed.
     snoozed: null,
-    // Rows the user unticked; they stay unticked when the box comes back.
+    // Keys of rows the user unticked; they stay unticked when the box comes back.
     unticked: new Set(),
+    // Keys this page has read from or written to storage, so it can remove them once handled.
+    knownKeys: new Set(),
   });
 
   const NEVER_SAVE = /captcha|verification code|password|\botp\b|security code/;
 
-  function track(target, kind, label, store) {
+  // Same key → same saved value (one profile key, or one saved-answer question).
+  function entryKey(entry) {
+    return entry.store ? `profile:${entry.store}` : `question:${norm(entry.question)}`;
+  }
+
+  function track(target, kind, label, store, ready = false) {
     const key = kind === "group" ? target[0] : target;
     if (store === false || state.tracked.has(key)) return;
     const question = label.replace(/\*/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
     if (NEVER_SAVE.test(norm(question)) || (!store && !question)) return;
-    state.tracked.set(key, { target, kind, question, store, original: "" });
+    state.tracked.set(key, { target, kind, question, store, original: "", ready });
   }
 
   // Fields we didn't see while filling (e.g. ones that appear after an earlier choice)
@@ -525,19 +539,19 @@
   function trackLate(el) {
     if (!state.ctx || !(el instanceof Element)) return;
     if (el.tagName === "SELECT") {
-      if (!state.tracked.has(el)) track(el, "select", labelText(el), resolve(el, labelText(el), state.ctx).store);
+      if (!state.tracked.has(el)) track(el, "select", labelText(el), resolve(el, labelText(el), state.ctx).store, true);
     } else if (el.type === "radio") {
       const inputs = el.name
         ? [...document.querySelectorAll(`input[type="radio"][name="${CSS.escape(el.name)}"]`)]
         : [el];
       if (![...state.tracked.keys()].some((key) => inputs.includes(key))) {
         const question = groupQuestion(inputs);
-        track(inputs, "group", question, resolve(inputs[0], question, state.ctx).store);
+        track(inputs, "group", question, resolve(inputs[0], question, state.ctx).store, true);
       }
     } else if (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && TEXT_TYPES.has((el.getAttribute("type") || "text").toLowerCase()))) {
       if (el.getAttribute("role") === "combobox" || state.tracked.has(el)) return;
       const label = labelText(el);
-      track(el, "text", label, resolve(el, label, state.ctx, { isTextarea: el.tagName === "TEXTAREA" }).store);
+      track(el, "text", label, resolve(el, label, state.ctx, { isTextarea: el.tagName === "TEXTAREA" }).store, true);
     }
   }
 
@@ -551,14 +565,42 @@
     return target.value.trim();
   }
 
+  function isConnected(entry) {
+    return Array.isArray(entry.target) ? entry.target[0].isConnected : entry.target.isConnected;
+  }
+
+  // Answers typed on this page, plus earlier unsaved ones (unless this page has a newer one).
   function pendingChanges() {
     const changes = [];
+    const keys = new Set();
     for (const entry of state.tracked.values()) {
-      if (!entry.target.isConnected && !(Array.isArray(entry.target) && entry.target[0].isConnected)) continue;
+      if (!entry.ready || !isConnected(entry)) continue;
       const value = currentValue(entry);
-      if (value && value !== entry.original) changes.push({ entry, value });
+      if (value && value !== entry.original && !keys.has(entryKey(entry))) {
+        changes.push({ entry, value });
+        keys.add(entryKey(entry));
+      }
+    }
+    for (const [key, entry] of state.stored) {
+      if (!keys.has(key)) changes.push({ entry, value: entry.value });
     }
     return changes;
+  }
+
+  // Writes this page's unsaved answers to storage, leaving other tabs' answers alone.
+  async function persistUnsaved(changes) {
+    const { unsavedAnswers = [] } = await chrome.storage.local.get("unsavedAnswers");
+    const byKey = new Map(unsavedAnswers.map((item) => [entryKey(item), item]));
+    for (const key of state.knownKeys) byKey.delete(key);
+    for (const { entry, value } of changes) {
+      const key = entryKey(entry);
+      state.knownKeys.add(key);
+      byKey.set(key, {
+        question: entry.question, store: entry.store || null, value,
+        site: entry.site || location.hostname, unticked: state.unticked.has(key),
+      });
+    }
+    await chrome.storage.local.set({ unsavedAnswers: [...byKey.values()].slice(-100) });
   }
 
   function onFieldEvent(event) {
@@ -573,17 +615,25 @@
   function refreshSaveBox() {
     if (state.running || state.saving) return;
     const changes = pendingChanges();
+    persistUnsaved(changes).catch(() => {});
     if (!changes.length) {
       hideSaveBox();
       return;
     }
-    if (!state.host && state.snoozed && changes.every(({ entry, value }) => state.snoozed.get(entry) === value)) return;
+    if (!state.host && state.snoozed && changes.every(({ entry, value }) => state.snoozed.get(entryKey(entry)) === value)) return;
     state.snoozed = null;
     renderSaveBox(changes);
   }
 
   function snooze(changes) {
-    state.snoozed = new Map(changes.map(({ entry, value }) => [entry, value]));
+    state.snoozed = new Map(changes.map(({ entry, value }) => [entryKey(entry), value]));
+  }
+
+  // The answer is dealt with: saved, or thrown away with the row's ✕.
+  function settle({ entry, value }) {
+    if (!entry.stored) entry.original = value;
+    state.stored.delete(entryKey(entry));
+    state.unticked.delete(entryKey(entry));
   }
 
   async function saveChanges(changes) {
@@ -600,9 +650,10 @@
         if (match) match.answer = value;
         else savedAnswers.push({ question: entry.question, answer: value });
       }
-      entry.original = value;
     }
     await chrome.storage.local.set({ profile, savedAnswers });
+    for (const change of changes) settle(change);
+    await persistUnsaved(pendingChanges());
     // Use the new answers the next time "Fill this page" runs on this page.
     if (state.ctx) Object.assign(state.ctx, { profile, saved: savedAnswers });
   }
@@ -617,8 +668,12 @@
     .list { overflow-y: auto; padding: 0 14px; }
     label { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-top: 1px solid #f3f4f6; cursor: pointer; }
     input { margin-top: 3px; }
+    .text { flex: 1; min-width: 0; }
     .q { font-weight: 600; }
     .v { color: #374151; word-break: break-word; }
+    .site { color: #9ca3af; font-size: 12px; }
+    .discard { border: none; background: none; color: #9ca3af; cursor: pointer; font-size: 14px; padding: 0 2px; }
+    .discard:hover { color: #b91c1c; }
     .actions { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px 12px; }
     button.btn { border-radius: 6px; padding: 7px 14px; font: inherit; font-weight: 600; cursor: pointer; }
     .save { background: #2563eb; color: #fff; border: 1px solid #2563eb; }
@@ -638,7 +693,7 @@
       </div>`;
     document.documentElement.appendChild(state.host);
 
-    // "Not now" only closes the box; the answers stay unsaved and come back with the next change.
+    // "Not now" only closes the box; the answers stay unsaved and come back later.
     const dismiss = () => {
       snooze(state.changes);
       hideSaveBox();
@@ -679,25 +734,45 @@
         state.rows.delete(entry);
       }
     }
-    for (const { entry, value } of changes) {
+    for (const change of changes) {
+      const { entry, value } = change;
+      const key = entryKey(entry);
       let row = state.rows.get(entry);
       if (!row) {
         const element = document.createElement("label");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = !state.unticked.has(entry);
+        checkbox.checked = !state.unticked.has(key);
         checkbox.addEventListener("change", () => {
-          if (checkbox.checked) state.unticked.delete(entry);
-          else state.unticked.add(entry);
+          if (checkbox.checked) state.unticked.delete(key);
+          else state.unticked.add(key);
+          persistUnsaved(state.changes).catch(() => {});
         });
         const text = document.createElement("span");
+        text.className = "text";
         const q = document.createElement("div");
         q.className = "q";
         q.textContent = shortLabel(entry.question) || "Field";
         const v = document.createElement("div");
         v.className = "v";
         text.append(q, v);
-        element.append(checkbox, text);
+        if (entry.stored && entry.site && entry.site !== location.hostname) {
+          const site = document.createElement("div");
+          site.className = "site";
+          site.textContent = `from ${entry.site}`;
+          text.append(site);
+        }
+        const discard = document.createElement("button");
+        discard.className = "discard";
+        discard.title = "Don't save this";
+        discard.textContent = "\u2715";
+        discard.addEventListener("click", (event) => {
+          event.preventDefault();
+          const latest = state.changes.find((c) => c.entry === entry) || change;
+          settle(latest);
+          refreshSaveBox();
+        });
+        element.append(checkbox, text, discard);
         list.appendChild(element);
         row = { element, checkbox, valueEl: v };
         state.rows.set(entry, row);
@@ -722,14 +797,26 @@
   // ---------- Main ----------
 
   async function run() {
-    const data = await chrome.storage.local.get(["profile", "savedAnswers", "resume", "coverLetterFile"]);
+    const data = await chrome.storage.local.get(["profile", "savedAnswers", "resume", "coverLetterFile", "unsavedAnswers"]);
     const ctx = { profile: data.profile || {}, saved: data.savedAnswers || [] };
     state.ctx = ctx;
     state.running = true;
-    state.tracked.clear();
-    state.unticked.clear();
-    state.snoozed = null;
     hideSaveBox();
+
+    // Keep what the user already typed on this page; drop fields that are gone.
+    for (const [key, entry] of state.tracked) if (!isConnected(entry)) state.tracked.delete(key);
+
+    // Earlier unsaved answers, from this page or others.
+    state.stored.clear();
+    for (const item of data.unsavedAnswers || []) {
+      if (!item || !item.value || NEVER_SAVE.test(norm(item.question))) continue;
+      const entry = { stored: true, question: item.question, store: item.store, value: item.value, site: item.site };
+      const key = entryKey(entry);
+      state.stored.set(key, entry);
+      state.knownKeys.add(key);
+      if (item.unticked) state.unticked.add(key);
+    }
+
     const fileMissing = [];
     let filled = fillFiles(data, fileMissing);
 
@@ -744,9 +831,17 @@
       await sleep(1200);
     }
 
-    // From here on, changes are the user's own.
-    for (const entry of state.tracked.values()) entry.original = currentValue(entry);
+    // From here on, changes to newly seen fields are the user's own.
+    for (const entry of state.tracked.values()) {
+      if (entry.ready) continue;
+      entry.original = currentValue(entry);
+      entry.ready = true;
+    }
     state.running = false;
+
+    // Show any unsaved answers right away.
+    state.snoozed = null;
+    refreshSaveBox();
     return { filled, missing: [...new Set([...fileMissing, ...missing].filter(Boolean))] };
   }
 
