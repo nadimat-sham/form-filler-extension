@@ -46,9 +46,17 @@ You can also enter or change your information any time: click **F**, then **Edit
 
 ---
 
-## Update
+## Get the latest version
 
-Download the new ZIP, replace the files in your Form Filler folder, then click **↻** on the Form Filler card in `chrome://extensions`. Your saved information is kept.
+The extension doesn't update by itself. To get a new version:
+
+1. On this GitHub page, click **Code**, then **Download ZIP**, and unzip it.
+2. Open the new **form-filler-extension-main** folder and copy all the files inside it.
+3. Paste them into your existing Form Filler folder, the one you chose in **Load unpacked**, and choose **Replace** when asked.
+4. Open `chrome://extensions` and click **↻** (reload) on the Form Filler card.
+5. Reload any job application pages that are open (F5).
+
+Your saved information, resume and answers are kept. You don't need to remove the extension or load it again.
 
 ---
 
