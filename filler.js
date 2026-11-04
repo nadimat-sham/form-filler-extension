@@ -504,6 +504,10 @@
   // Kept on window so re-running the filler on the same page reuses one set of listeners.
   const state = window.__formFillerState || (window.__formFillerState = {
     tracked: new Map(), rows: new Map(), changes: [], ctx: null, running: false, saving: false, timer: null, host: null,
+    // After "Not now" / "×": the answers on show then, so the box stays closed until something new is typed.
+    snoozed: null,
+    // Rows the user unticked; they stay unticked when the box comes back.
+    unticked: new Set(),
   });
 
   const NEVER_SAVE = /captcha|verification code|password|\botp\b|security code/;
@@ -513,7 +517,7 @@
     if (store === false || state.tracked.has(key)) return;
     const question = label.replace(/\*/g, "").replace(/\s+/g, " ").trim().slice(0, 300);
     if (NEVER_SAVE.test(norm(question)) || (!store && !question)) return;
-    state.tracked.set(key, { target, kind, question, store, original: "", dismissed: "" });
+    state.tracked.set(key, { target, kind, question, store, original: "" });
   }
 
   // Fields we didn't see while filling (e.g. ones that appear after an earlier choice)
@@ -552,7 +556,7 @@
     for (const entry of state.tracked.values()) {
       if (!entry.target.isConnected && !(Array.isArray(entry.target) && entry.target[0].isConnected)) continue;
       const value = currentValue(entry);
-      if (value && value !== entry.original && value !== entry.dismissed) changes.push({ entry, value });
+      if (value && value !== entry.original) changes.push({ entry, value });
     }
     return changes;
   }
@@ -564,11 +568,22 @@
     state.timer = setTimeout(refreshSaveBox, 600);
   }
 
+  // The box always lists every unsaved answer. Once closed, it reopens only when the user
+  // types or changes something new.
   function refreshSaveBox() {
     if (state.running || state.saving) return;
     const changes = pendingChanges();
-    if (changes.length) renderSaveBox(changes);
-    else hideSaveBox();
+    if (!changes.length) {
+      hideSaveBox();
+      return;
+    }
+    if (!state.host && state.snoozed && changes.every(({ entry, value }) => state.snoozed.get(entry) === value)) return;
+    state.snoozed = null;
+    renderSaveBox(changes);
+  }
+
+  function snooze(changes) {
+    state.snoozed = new Map(changes.map(({ entry, value }) => [entry, value]));
   }
 
   async function saveChanges(changes) {
@@ -623,16 +638,16 @@
       </div>`;
     document.documentElement.appendChild(state.host);
 
-    // "Not now" hides these answers until they change again.
+    // "Not now" only closes the box; the answers stay unsaved and come back with the next change.
     const dismiss = () => {
-      for (const { entry, value } of state.changes) entry.dismissed = value;
+      snooze(state.changes);
       hideSaveBox();
     };
     root.querySelector(".close").addEventListener("click", dismiss);
     root.querySelector(".later").addEventListener("click", dismiss);
     root.querySelector(".save").addEventListener("click", async () => {
       const chosen = state.changes.filter(({ entry }) => state.rows.get(entry).checkbox.checked);
-      for (const change of state.changes) if (!chosen.includes(change)) change.entry.dismissed = change.value;
+      snooze(state.changes.filter((change) => !chosen.includes(change)));
       state.saving = true;
       const box = root.querySelector(".box");
       try {
@@ -670,7 +685,11 @@
         const element = document.createElement("label");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
-        checkbox.checked = true;
+        checkbox.checked = !state.unticked.has(entry);
+        checkbox.addEventListener("change", () => {
+          if (checkbox.checked) state.unticked.delete(entry);
+          else state.unticked.add(entry);
+        });
         const text = document.createElement("span");
         const q = document.createElement("div");
         q.className = "q";
@@ -708,6 +727,8 @@
     state.ctx = ctx;
     state.running = true;
     state.tracked.clear();
+    state.unticked.clear();
+    state.snoozed = null;
     hideSaveBox();
     const fileMissing = [];
     let filled = fillFiles(data, fileMissing);
