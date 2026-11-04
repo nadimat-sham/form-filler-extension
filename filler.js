@@ -6,15 +6,11 @@
   const DECLINE = /decline|prefer not|rather not|choose not|not (wish|want) to|don t (wish|want)|do not (wish|want)|not to (answer|say|disclose|identify)/;
   const TEXT_TYPES = new Set(["text", "email", "tel", "url", "number", "date"]);
 
-  // Profile keys that fall back to a similar key when empty (BD-form fields ↔ general fields).
-  const FALLBACK = {
-    presentVillage: "street", presentDistrict: "city", presentPostCode: "zip", zip: "presentPostCode",
-    graInstitute: "school", graSubject: "major", graYear: "graduationYear", graResult: "gpa",
-  };
+  // Only values the user entered are ever filled: no guessing, no borrowing from similar fields.
   const DATE_KEYS = new Set(["startDate", "dateOfBirth"]);
 
   function get(p, key) {
-    return p[key] || (FALLBACK[key] && p[FALLBACK[key]]) || "";
+    return p[key] || "";
   }
 
   // Dropdowns, radio buttons, checkboxes and custom comboboxes get a choice; inputs get text.
@@ -23,8 +19,10 @@
   }
 
   // "Do you have one?" dropdown when the field is a choice, the number itself when it's a text box.
-  const idNumber = (key) => (p, el) => (isChoiceField(el) ? (p[key] ? "Yes" : "No") : p[key]);
-  const idNumberStore = (key) => (el) => (isChoiceField(el) ? false : key);
+  // "Do you have one?" dropdown: only the Yes/No the user chose themselves (saved as e.g.
+  // nidNumberHas). In a text box: the number itself.
+  const idNumber = (key) => (p, el) => (isChoiceField(el) ? p[`${key}Has`] || "" : p[key]);
+  const idNumberStore = (key) => (el) => (isChoiceField(el) ? `${key}Has` : key);
 
   // Same-named fields in different form sections (e.g. "Board" under SSC and HSC) are told apart
   // by the section: the field's <fieldset> legend plus its name/id.
@@ -35,7 +33,7 @@
     { prefix: "ssc", section: /\bssc\b|secondary school|\bdakhil\b|o level/ },
   ];
   const EDUCATION_RULES = LEVELS.flatMap(({ prefix, section }) => [
-    { key: `${prefix}Applicable`, kind: "choice", section, test: /if applicable/, value: (p) => (p[`${prefix}Exam`] ? "Yes" : ""), store: false },
+    { key: `${prefix}Applicable`, kind: "choice", section, test: /if applicable/, value: () => "", store: false },
     { key: `${prefix}Exam`, kind: "text", section, test: /exam|degree title|level of education/ },
     { key: `${prefix}Board`, kind: "text", section, test: /\bboard\b/ },
     { key: `${prefix}Roll`, kind: "text", section, test: /\broll\b/ },
@@ -108,13 +106,13 @@
     { key: "preferredName", kind: "text", test: /preferred (first )?name|nick ?name|go by/ },
     { key: "firstName", kind: "text", test: /\bfirst name\b|\bgiven name\b|\bforename\b|\bfname\b/ },
     { key: "lastName", kind: "text", test: /\blast name\b|\bfamily name\b|\bsurname\b|\blname\b/ },
-    { key: "fullName", kind: "text", test: /full name|legal name|your name|^name$|candidate name|applicant name/, value: (p) => [p.firstName, p.lastName].filter(Boolean).join(" "), store: "fullName" },
+    { key: "fullName", kind: "text", test: /full name|legal name|your name|^name$|candidate name|applicant name/, value: (p) => p.fullName || [p.firstName, p.lastName].filter(Boolean).join(" "), store: "fullName" },
     { key: "country", kind: "text", test: /\bcountry\b/, not: /code/ },
     { key: "phone", kind: "text", test: /phone|mobile|\bcell\b|telephone|contact number/ },
     { key: "zip", kind: "text", test: /\bzip\b|postal|post ?code/ },
     { key: "state", kind: "text", test: /\bstate\b|province|\bregion\b/, not: /united states|statement/ },
     { key: "city", kind: "text", test: /\bcity\b|\btown\b/ },
-    { key: "location", kind: "text", test: /\blocation\b|where are you (based|located)|current residence/, value: (p) => [p.city, p.state, p.country].filter(Boolean).join(", "), store: null },
+    { key: "location", kind: "text", test: /\blocation\b|where are you (based|located)|current residence/, store: "location" },
     { key: "street", kind: "text", test: /street|address line 1|\baddress 1\b|\baddress\b/, not: /e ?mail|ip address|line 2|address 2|web/ },
     { key: "graduationYear", kind: "text", test: /graduat|grad year|completion (year|date)|year of completion/ },
     { key: "gpa", kind: "text", test: /\bc?gpa\b|grade point/ },
@@ -296,7 +294,6 @@
       return { key: rule.key, value: ruleValue(rule, ctx.profile, el), store: storeKey(rule, el) };
     }
 
-    if (saved.score >= 0.5) return { key: "savedAnswer", value: saved.answer, store: null };
     return { key: null, value: "", store: null };
   }
 
@@ -336,7 +333,6 @@
 
     const v = norm(value);
     if (!v) return -1;
-    const vWords = v.split(" ");
     let best = -1;
     let bestScore = 0;
     texts.forEach((t, i) => {
@@ -345,11 +341,6 @@
       if (t === v) score = 100;
       else if (t.startsWith(v) || (t.length >= 3 && v.startsWith(t))) score = 80;
       else if (t.includes(v) || (t.length >= 4 && v.includes(t))) score = 60;
-      else {
-        const tWords = t.split(" ");
-        const common = tWords.filter((w) => w.length > 2 && vWords.includes(w)).length;
-        if (common) score = 20 + (20 * common) / Math.max(tWords.length, vWords.length) + (tWords[0] === vWords[0] ? 10 : 0);
-      }
       if (score > bestScore) {
         bestScore = score;
         best = i;
@@ -399,10 +390,8 @@
     const type = (el.type || "").toLowerCase();
     if (type === "number") return value.replace(/[^0-9.]/g, "") || null;
     if (type === "date") return DATE_KEYS.has(key) ? value : null;
-    if (DATE_KEYS.has(key) && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const [y, m, d] = value.split("-");
-      return /^dd/.test(norm(el.placeholder)) ? `${d}/${m}/${y}` : `${m}/${d}/${y}`;
-    }
+    // A saved date only goes into a date picker; a text box's date format is unknown.
+    if (DATE_KEYS.has(key)) return null;
     return value;
   }
 
@@ -587,12 +576,7 @@
     const profile = data.profile || {};
     const savedAnswers = data.savedAnswers || [];
     for (const { entry, value } of changes) {
-      if (entry.store === "fullName") {
-        // "Md. Azizul Haque Nadim" → first name "Md. Azizul Haque", last name "Nadim".
-        const words = value.split(/\s+/);
-        profile.lastName = words.length > 1 ? words.pop() : "";
-        profile.firstName = words.join(" ");
-      } else if (entry.store) {
+      if (entry.store) {
         profile[entry.store] = value;
       } else {
         const similar = bestSavedAnswer(entry.question, savedAnswers);
@@ -754,7 +738,7 @@
       const label = labelText(input);
       const text = norm(`${label} ${attrText(input)}`);
       const key = /cover/.test(text) ? "coverLetterFile"
-        : /resume|\bcv\b|curriculum/.test(text) || fileInputs.length === 1 ? "resume"
+        : /resume|\bcv\b|curriculum/.test(text) ? "resume"
         : null;
       if (key && data[key] && attachFile(input, data[key])) {
         filled++;

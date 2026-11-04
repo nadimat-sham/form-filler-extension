@@ -165,8 +165,10 @@ async function load() {
 async function save(event) {
   event.preventDefault();
 
+  // Keep values saved from websites that this page has no field for (e.g. nidNumberHas).
+  const { profile: stored } = await chrome.storage.local.get("profile");
   const toSet = {
-    profile: readProfile(),
+    profile: { ...(stored || {}), ...readProfile() },
     savedAnswers: readAnswers(),
   };
   const toRemove = [];
